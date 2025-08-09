@@ -10,23 +10,30 @@
 </head>
 <body>
     <div class="container">
+        <div id="loading" class="loading-container" style="display: none;">
+            <div class="loading-spinner"></div>
+            <p>資料加載中...</p>
+        </div>
+
+        <div id="error-message" class="error-alert" style="display: none;"></div>
+
         <h1>專業報價單系統</h1>
         
         <div class="header-info">
             <div>
                 <div class="info-group">
                     <label for="quotation-number">報價單編號</label>
-                    <input type="text" id="quotation-number" readonly>
+                    <input type="text" id="quotation-number" readonly required>
                 </div>
                 <div class="info-group">
                     <label for="date">日期</label>
-                    <input type="date" id="date">
+                    <input type="date" id="date" required>
                 </div>
             </div>
             <div>
                 <div class="info-group">
                     <label for="customer">客戶名稱</label>
-                    <input type="text" id="customer" placeholder="請輸入客戶名稱">
+                    <input type="text" id="customer" placeholder="請輸入客戶名稱" required>
                 </div>
                 <div class="info-group">
                     <label for="contact-person">聯絡人</label>
@@ -51,8 +58,8 @@
         </table>
         
         <div class="button-group">
-            <button class="btn-add" id="add-item">＋ 新增項目</button>
-            <button class="btn-remove" id="remove-item">－ 刪除選中項目</button>
+            <button type="button" class="btn-add" id="add-item">＋ 新增項目</button>
+            <button type="button" class="btn-remove" id="remove-item">－ 刪除選中項目</button>
         </div>
         
         <div class="total-section">
@@ -70,11 +77,11 @@
         </div>
         
         <div class="export-buttons">
-            <button class="btn-export" id="save-btn">💾 儲存</button>
-            <button class="btn-export" id="delete-btn">🗑️ 刪除訂單</button>
-            <button class="btn-export" id="export-txt">📄 導出TXT</button>
-            <button class="btn-export" id="export-excel">📊 導出Excel</button>
-            <button class="btn-export" id="print-btn">🖨️ 列印報價單</button>
+            <button type="button" class="btn-export" id="save-btn">💾 儲存</button>
+            <button type="button" class="btn-export" id="delete-btn">🗑️ 刪除訂單</button>
+            <button type="button" class="btn-export" id="export-txt">📄 導出TXT</button>
+            <button type="button" class="btn-export" id="export-excel">📊 導出Excel</button>
+            <button type="button" class="btn-export" id="print-btn">🖨️ 列印報價單</button>
         </div>
         
         <div class="database-list">
@@ -82,39 +89,7 @@
             <div class="quotation-list" id="quotation-list"></div>
         </div>
     </div>
-    <!-- 在HTML中添加加載狀態和錯誤顯示 -->
-<div id="loading" style="display: none;">
-  <div class="loading-spinner"></div>
-  <p>資料加載中...</p>
-</div>
 
-<div id="error-message" class="error-alert" style="display: none;"></div>
-
-<style>
-.loading-spinner {
-  border: 5px solid #f3f3f3;
-  border-top: 5px solid #3498db;
-  border-radius: 50%;
-  width: 50px;
-  height: 50px;
-  animation: spin 2s linear infinite;
-  margin: 0 auto;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.error-alert {
-  background-color: #f8d7da;
-  color: #721c24;
-  padding: 15px;
-  margin: 15px 0;
-  border: 1px solid #f5c6cb;
-  border-radius: 4px;
-}
-</style>
     <script src="script.js"></script>
 </body>
 </html>
