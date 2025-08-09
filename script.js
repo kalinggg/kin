@@ -1,5 +1,113 @@
+// 完整的前端API調用封裝
+class QuotationAPI {
+  constructor() {
+    this.baseUrl = 'https://script.google.com/macros/s/AKfycbzlajZNy_D0j3dWDtZNj26Z9B42CAilvW1ucryfqZK9VsXbDt4Omv1FKbYzPL2slRI8wg/exec';
+    this.password = 'your_secure_password';
+  }
+  
+  async request(action, data = {}) {
+    const params = new URLSearchParams({
+      action,
+      password: this.password,
+      ...data
+    });
+    
+    try {
+      const response = await fetch(`${this.baseUrl}?${params}`, {
+        method: 'POST',
+        redirect: 'follow'
+      });
+      
+      if (!response.ok) throw new Error('Network response was not ok');
+      return await response.json();
+    } catch (error) {
+      console.error('API request failed:', error);
+      throw error;
+    }
+  }
+  
+  async create(quotation) {
+    return this.request('create', {
+      number: quotation.number,
+      date: quotation.date,
+      customer: quotation.customer,
+      contact: quotation.contact,
+      address: quotation.address,
+      notes: quotation.notes,
+      items: JSON.stringify(quotation.items),
+      total: quotation.total
+    });
+  }
+  
+  async getAll() {
+    return this.request('read');
+  }
+  
+  async getById(id) {
+    const result = await this.request('read', { id });
+    return result[0] || null;
+  }
+  
+  async delete(id) {
+    return this.request('delete', { id });
+  }
+}
+
+// 使用範例
+const api = new QuotationAPI();
+
+// 保存報價單
+async function saveToDatabase() {
+  showLoading();
+  try {
+    const quotation = getCurrentQuotation();
+    await api.create(quotation);
+    await loadFromDatabase();
+    showSuccess('報價單已成功保存！');
+  } catch (error) {
+    showError('保存失敗: ' + error.message);
+  } finally {
+    hideLoading();
+  }
+}
+// 在所有API請求中添加密碼參數
+const API_PASSWORD = 'your_secure_password';
+
+async function callGAS(action, params = {}) {
+    params.action = action;
+    params.password = API_PASSWORD;
+    
+    const response = await fetch(`${GAS_API_URL}?${new URLSearchParams(params)}`, {
+        method: 'POST',
+        redirect: 'follow'
+    });
+    
+    return response.json();
+}
+
+}
 // 配置
 const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbzlajZNy_D0j3dWDtZNj26Z9B42CAilvW1ucryfqZK9VsXbDt4Omv1FKbYzPL2slRI8wg/exec';
+
+// 使用批量操作
+function batchCreateQuotations(sheet, rows) {
+  sheet.getRange(
+    sheet.getLastRow() + 1, 1, rows.length, rows[0].length
+  ).setValues(rows);
+}
+
+// 在前端添加重試機制
+async function loadWithRetry(retries = 3) {
+  try {
+    return await loadFromDatabase();
+  } catch (error) {
+    if (retries > 0) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return loadWithRetry(retries - 1);
+    }
+    throw error;
+  }
+}
 
 // 保存報價單到Google Sheets
 async function saveToDatabase() {
