@@ -275,20 +275,127 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 保存到資料庫
-    async function saveToDatabase() {
-        showLoading();
-        try {
-            const quotation = getCurrentQuotation();
-            await api.create(quotation);
+    // 儲存到資料庫
+async function saveToDatabase() {
+    showLoading();
+    try {
+        const quotation = getCurrentQuotation();
+        const result = await api.create(quotation);
+        
+        if (result && result.success) {
+            // 重新從伺服器加載最新資料
             await loadFromDatabase();
             showSuccess('報價單已成功保存！');
-        } catch (error) {
-            showError('保存失敗: ' + error.message);
-        } finally {
-            hideLoading();
+            
+            // 同時更新本地存儲
+            database.push(quotation);
+            localStorage.setItem('quotationDatabase', JSON.stringify(database));
+            
+            // 重置表單
+            resetForm();
+        } else {
+            throw new Error(result?.message || '保存失敗');
         }
+    } catch (error) {
+        showError('保存失敗: ' + error.message);
+        console.error('保存錯誤:', error);
+    } finally {
+        hideLoading();
     }
+}
+
+// 從資料庫加載報價單
+async function loadFromDatabase() {
+    showLoading();
+    try {
+        const data = await api.getAll();
+        
+        // 更新本地資料庫
+        database = data.map(record => ({
+            id: record.id,
+            number: record.number,
+            date: record.date,
+            customer: record.customer,
+            contact: record.contact,
+            address: record.address,
+            notes: record.notes,
+            items: JSON.parse(record.items || '[]'),
+            total: record.total,
+            created: record.created
+        }));
+        
+        // 更新本地存儲
+        localStorage.setItem('quotationDatabase', JSON.stringify(database));
+        
+        // 重新渲染列表
+        renderQuotationList();
+    } catch (error) {
+        showError('加載失敗: ' + error.message);
+        console.error('加載錯誤:', error);
+        
+        // 嘗試從本地存儲恢復
+        const localData = localStorage.getItem('quotationDatabase');
+        if (localData) {
+            database = JSON.parse(localData);
+            renderQuotationList();
+        }
+    } finally {
+        hideLoading();
+    }
+}
+
+// 重置表單
+function resetForm() {
+    document.getElementById('items-body').innerHTML = '';
+    itemCounter = 1;
+    document.getElementById('quotation-number').value = generateQuotationNumber();
+    document.getElementById('date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('customer').value = '';
+    document.getElementById('contact-person').value = '';
+    document.getElementById('address').value = '';
+    document.getElementById('notes').value = '';
+    document.getElementById('grand-total').textContent = '0';
+}
+
+// 渲染報價單列表 (改進版)
+function renderQuotationList() {
+    const listContainer = document.getElementById('quotation-list');
+    
+    if (!database || database.length === 0) {
+        listContainer.innerHTML = '<p>尚未儲存任何報價單</p>';
+        return;
+    }
+
+    // 按創建時間降序排序
+    const sortedData = [...database].sort((a, b) => {
+        return new Date(b.created || b.date) - new Date(a.created || a.date);
+    });
+
+    listContainer.innerHTML = sortedData.map(quotation => `
+        <div class="quotation-item" data-id="${quotation.id}">
+            <span>${quotation.number} - ${quotation.customer}</span>
+            <span>總計: ${quotation.total}</span>
+            <small>${formatDate(quotation.date)}</small>
+        </div>
+    `).join('');
+
+    // 綁定點擊事件
+    document.querySelectorAll('.quotation-item').forEach(item => {
+        item.addEventListener('click', function() {
+            document.querySelectorAll('.quotation-item').forEach(i => {
+                i.classList.remove('selected');
+            });
+            this.classList.add('selected');
+        });
+    });
+}
+
+// 格式化日期
+function formatDate(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('zh-TW');
+}
 
     // 刪除選中報價單
     async function deleteSelectedQuotation() {
