@@ -301,3 +301,15 @@ button {
     border: 1px solid #f5c6cb;
     border-radius: 4px;
 }
+.quotation-item small {
+    color: #666;
+    font-size: 0.8em;
+    margin-left: 10px;
+}
+
+.quotation-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+}
