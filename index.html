@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>專業報價單系統</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- SheetJS (XLSX) 庫 -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>專業報價單系統</h1>
+        
+        <div class="header-info">
+            <div>
+                <div class="info-group">
+                    <label for="quotation-number">報價單編號</label>
+                    <input type="text" id="quotation-number" readonly>
+                </div>
+                <div class="info-group">
+                    <label for="date">日期</label>
+                    <input type="date" id="date">
+                </div>
+            </div>
+            <div>
+                <div class="info-group">
+                    <label for="customer">客戶名稱</label>
+                    <input type="text" id="customer" placeholder="請輸入客戶名稱">
+                </div>
+                <div class="info-group">
+                    <label for="contact-person">聯絡人</label>
+                    <input type="text" id="contact-person" placeholder="請輸入聯絡人姓名">
+                </div>
+            </div>
+        </div>
+        
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th width="5%">序號</th>
+                    <th width="35%">項目描述</th>
+                    <th width="10%">數量</th>
+                    <th width="15%">單價</th>
+                    <th width="15%">金額</th>
+                    <th width="15%">備註</th>
+                    <th width="5%">操作</th>
+                </tr>
+            </thead>
+            <tbody id="items-body"></tbody>
+        </table>
+        
+        <div class="button-group">
+            <button class="btn-add" id="add-item">＋ 新增項目</button>
+            <button class="btn-remove" id="remove-item">－ 刪除選中項目</button>
+        </div>
+        
+        <div class="total-section">
+            <div>總計: <span id="grand-total">0</span></div>
+        </div>
+        
+        <div class="info-group">
+            <label for="address">地址</label>
+            <textarea id="address" placeholder="請輸入客戶地址"></textarea>
+        </div>
+        
+        <div class="info-group">
+            <label for="notes">備註說明</label>
+            <textarea id="notes" placeholder="請輸入任何額外的說明或條款..."></textarea>
+        </div>
+        
+        <div class="export-buttons">
+            <button class="btn-export" id="save-btn">💾 儲存</button>
+            <button class="btn-export" id="delete-btn">🗑️ 刪除訂單</button>
+            <button class="btn-export" id="export-txt">📄 導出TXT</button>
+            <button class="btn-export" id="export-excel">📊 導出Excel</button>
+            <button class="btn-export" id="print-btn">🖨️ 列印報價單</button>
+        </div>
+        
+        <div class="database-list">
+            <h2>歷史報價單</h2>
+            <div class="quotation-list" id="quotation-list"></div>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
