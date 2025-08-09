@@ -1,3 +1,96 @@
+// 配置
+const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbzlajZNy_D0j3dWDtZNj26Z9B42CAilvW1ucryfqZK9VsXbDt4Omv1FKbYzPL2slRI8wg/exec';
+
+// 保存報價單到Google Sheets
+async function saveToDatabase() {
+    const quotation = getCurrentQuotation();
+    const itemsStr = JSON.stringify(quotation.items);
+    
+    const params = new URLSearchParams();
+    params.append('action', 'create');
+    params.append('number', quotation.number);
+    params.append('date', quotation.date);
+    params.append('customer', quotation.customer);
+    params.append('contact', quotation.contact);
+    params.append('address', quotation.address);
+    params.append('notes', quotation.notes);
+    params.append('items', itemsStr);
+    params.append('total', quotation.total);
+    
+    try {
+        const response = await fetch(`${GAS_API_URL}?${params.toString()}`, {
+            method: 'POST',
+            redirect: 'follow'
+        });
+        
+        // 處理Google Apps Script的重定向
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('報價單已成功保存！');
+            loadFromDatabase();
+        }
+    } catch (error) {
+        alert('保存失敗: ' + error.message);
+        console.error('Error:', error);
+    }
+}
+
+// 從Google Sheets加載報價單
+async function loadFromDatabase() {
+    try {
+        const response = await fetch(`${GAS_API_URL}?action=read`, {
+            method: 'GET',
+            redirect: 'follow'
+        });
+        
+        const data = await response.json();
+        
+        // 轉換數據格式
+        database = data.map(record => ({
+            id: record.id,
+            number: record.number,
+            date: record.date,
+            customer: record.customer,
+            contact: record.contact,
+            address: record.address,
+            notes: record.notes,
+            items: JSON.parse(record.items || '[]'),
+            total: record.total,
+            created: record.created
+        }));
+        
+        renderQuotationList();
+    } catch (error) {
+        alert('加載失敗: ' + error.message);
+        console.error('Error:', error);
+    }
+}
+
+// 刪除報價單
+async function deleteSelectedQuotation() {
+    const selectedQuotation = document.querySelector('.quotation-item.selected');
+    if (!selectedQuotation) return alert('請先選擇要刪除的報價單！');
+    
+    const quotationId = selectedQuotation.dataset.id;
+    if (confirm('確定要刪除此報價單嗎？此操作無法復原！')) {
+        try {
+            const response = await fetch(`${GAS_API_URL}?action=delete&id=${quotationId}`, {
+                method: 'POST',
+                redirect: 'follow'
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+                alert('報價單已刪除！');
+                loadFromDatabase();
+            }
+        } catch (error) {
+            alert('刪除失敗: ' + error.message);
+        }
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // 自動生成報價單編號 (格式: Q-年月日-序號)
     function generateQuotationNumber() {
