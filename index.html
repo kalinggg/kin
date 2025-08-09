@@ -82,7 +82,39 @@
             <div class="quotation-list" id="quotation-list"></div>
         </div>
     </div>
-    
+    <!-- 在HTML中添加加載狀態和錯誤顯示 -->
+<div id="loading" style="display: none;">
+  <div class="loading-spinner"></div>
+  <p>資料加載中...</p>
+</div>
+
+<div id="error-message" class="error-alert" style="display: none;"></div>
+
+<style>
+.loading-spinner {
+  border: 5px solid #f3f3f3;
+  border-top: 5px solid #3498db;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  animation: spin 2s linear infinite;
+  margin: 0 auto;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.error-alert {
+  background-color: #f8d7da;
+  color: #721c24;
+  padding: 15px;
+  margin: 15px 0;
+  border: 1px solid #f5c6cb;
+  border-radius: 4px;
+}
+</style>
     <script src="script.js"></script>
 </body>
 </html>
