@@ -52,6 +52,7 @@ class QuotationAPI {
     return this.request('delete', { id });
   }
 }
+
 // 全局變量
 const api = new QuotationAPI();
 let database = [];
@@ -68,12 +69,8 @@ function initApp() {
   document.getElementById('date').value = today;
   document.getElementById('quotation-number').value = generateQuotationNumber();
 
-  // 從本地存儲加載數據
-  const savedData = localStorage.getItem('quotationDatabase');
-  database = savedData ? JSON.parse(savedData) : [];
-  
-  // 渲染報價單列表
-  renderQuotationList();
+  // 從伺服器加載數據
+  loadFromDatabase();
 
   // 綁定事件監聽器
   setupEventListeners();
@@ -98,111 +95,175 @@ function setupEventListeners() {
   document.getElementById('print-btn').addEventListener('click', printQuotation);
 }
 
+// 從資料庫加載報價單
+async function loadFromDatabase() {
+  showLoading();
+  try {
+    const data = await api.getAll();
+    
+    // 更新本地資料庫
+    database = data.map(record => ({
+      id: record.id,
+      number: record.number,
+      date: record.date,
+      customer: record.customer,
+      contact: record.contact,
+      address: record.address,
+      notes: record.notes,
+      items: JSON.parse(record.items || '[]'),
+      total: record.total,
+      created: record.created || new Date().toISOString()
+    }));
+    
+    // 更新本地存儲
+    localStorage.setItem('quotationDatabase', JSON.stringify(database));
+    
+    // 重新渲染列表
+    renderQuotationList();
+  } catch (error) {
+    showError('加載失敗: ' + error.message);
+    console.error('加載錯誤:', error);
+    
+    // 嘗試從本地存儲恢復
+    const localData = localStorage.getItem('quotationDatabase');
+    if (localData) {
+      database = JSON.parse(localData);
+      renderQuotationList();
+    }
+  } finally {
+    hideLoading();
+  }
+}
+
 // 渲染報價單列表
 function renderQuotationList() {
   const listContainer = document.getElementById('quotation-list');
   
-  if (database.length === 0) {
+  if (!database || database.length === 0) {
     listContainer.innerHTML = '<p>尚未儲存任何報價單</p>';
     return;
   }
 
-  listContainer.innerHTML = database.map(quotation => `
+  // 按創建時間降序排序
+  const sortedData = [...database].sort((a, b) => {
+    return new Date(b.created) - new Date(a.created);
+  });
+
+  listContainer.innerHTML = sortedData.map(quotation => `
     <div class="quotation-item" data-id="${quotation.id}">
       <span>${quotation.number} - ${quotation.customer}</span>
       <span>總計: ${quotation.total}</span>
+      <small>${formatDate(quotation.date)}</small>
     </div>
   `).join('');
 
-  // 為每個項目添加點擊事件
+  // 綁定點擊事件
   document.querySelectorAll('.quotation-item').forEach(item => {
     item.addEventListener('click', function() {
-      // 移除所有選中狀態
       document.querySelectorAll('.quotation-item').forEach(i => {
         i.classList.remove('selected');
       });
-      // 添加當前選中狀態
       this.classList.add('selected');
-      
-      const quotationId = this.dataset.id;
-      const quotation = database.find(q => q.id === quotationId);
-      if (quotation && confirm('載入此報價單？現有內容將會被替換。')) {
-        loadQuotation(quotation);
-      }
     });
   });
 }
 
-// 使用範例
-const api = new QuotationAPI();
-
-// 在前端添加重試機制
-async function loadWithRetry(retries = 3) {
+// 儲存到資料庫
+async function saveToDatabase() {
+  showLoading();
   try {
-    return await loadFromDatabase();
-  } catch (error) {
-    if (retries > 0) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      return loadWithRetry(retries - 1);
+    const quotation = getCurrentQuotation();
+    const result = await api.create(quotation);
+    
+    if (result && result.success) {
+      // 重新從伺服器加載最新資料
+      await loadFromDatabase();
+      showSuccess('報價單已成功保存！');
+      
+      // 重置表單
+      resetForm();
+    } else {
+      throw new Error(result?.message || '保存失敗');
     }
-    throw error;
+  } catch (error) {
+    showError('保存失敗: ' + error.message);
+    console.error('保存錯誤:', error);
+  } finally {
+    hideLoading();
   }
 }
 
-// 從Google Sheets加載報價單
-async function loadFromDatabase() {
+// 刪除選中報價單
+async function deleteSelectedQuotation() {
+  const selectedQuotation = document.querySelector('.quotation-item.selected');
+  if (!selectedQuotation) return showError('請先選擇要刪除的報價單！');
+  
+  const quotationId = selectedQuotation.dataset.id;
+  if (confirm('確定要刪除此報價單嗎？此操作無法復原！')) {
+    showLoading();
     try {
-        const data = await api.getAll();
-        
-        // 轉換數據格式
-        database = data.map(record => ({
-            id: record.id,
-            number: record.number,
-            date: record.date,
-            customer: record.customer,
-            contact: record.contact,
-            address: record.address,
-            notes: record.notes,
-            items: JSON.parse(record.items || '[]'),
-            total: record.total,
-            created: record.created
-        }));
-        
-        renderQuotationList();
+      await api.delete(quotationId);
+      await loadFromDatabase();
+      showSuccess('報價單已刪除！');
     } catch (error) {
-        alert('加載失敗: ' + error.message);
-        console.error('Error:', error);
+      showError('刪除失敗: ' + error.message);
+    } finally {
+      hideLoading();
     }
+  }
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    // 自動生成報價單編號 (格式: Q-年月日-序號)
-    function generateQuotationNumber() {
-        const now = new Date();
-        const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
-        const randomNum = Math.floor(1000 + Math.random() * 9000);
-        return `Q-${dateStr}-${randomNum}`;
-    }
+// 重置表單
+function resetForm() {
+  document.getElementById('items-body').innerHTML = '';
+  itemCounter = 1;
+  document.getElementById('quotation-number').value = generateQuotationNumber();
+  document.getElementById('date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('customer').value = '';
+  document.getElementById('contact-person').value = '';
+  document.getElementById('address').value = '';
+  document.getElementById('notes').value = '';
+  document.getElementById('grand-total').textContent = '0';
+}
 
-    // 設置默認日期和報價單編號
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('date').value = today;
-    document.getElementById('quotation-number').value = generateQuotationNumber();
+// 格式化日期
+function formatDate(dateString) {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('zh-TW');
+}
 
-    // 初始化項目計數器和資料庫
-    let itemCounter = 1;
-    let database = JSON.parse(localStorage.getItem('quotationDatabase')) || [];
-    renderQuotationList();
+// 加載狀態函數
+function showLoading() {
+  document.getElementById('loading').style.display = 'flex';
+}
 
-    // 事件監聽器
-    document.getElementById('add-item').addEventListener('click', addNewItem);
-    document.getElementById('remove-item').addEventListener('click', removeSelectedItems);
-    document.getElementById('save-btn').addEventListener('click', saveToDatabase);
-    document.getElementById('delete-btn').addEventListener('click', deleteSelectedQuotation);
-    document.getElementById('export-txt').addEventListener('click', exportToTxt);
-    document.getElementById('export-excel').addEventListener('click', exportToExcel);
-    document.getElementById('print-btn').addEventListener('click', printQuotation);
+function hideLoading() {
+  document.getElementById('loading').style.display = 'none';
+}
 
+function showSuccess(message) {
+  const errorDiv = document.getElementById('error-message');
+  errorDiv.style.display = 'block';
+  errorDiv.style.backgroundColor = '#d4edda';
+  errorDiv.style.color = '#155724';
+  errorDiv.style.borderColor = '#c3e6cb';
+  errorDiv.textContent = message;
+  setTimeout(() => errorDiv.style.display = 'none', 3000);
+}
+
+function showError(message) {
+  const errorDiv = document.getElementById('error-message');
+  errorDiv.style.display = 'block';
+  errorDiv.style.backgroundColor = '#f8d7da';
+  errorDiv.style.color = '#721c24';
+  errorDiv.style.borderColor = '#f5c6cb';
+  errorDiv.textContent = message;
+  setTimeout(() => errorDiv.style.display = 'none', 5000);
+}
+
+// 其他保持不變的函數 (addNewItem, calculateRowTotal, calculateTotals, removeSelectedItems, updateItemNumbers, getCurrentQuotation, exportToTxt, exportToExcel, printQuotation, loadQuotation)
+// ... [保持原有代碼不變]
     // 添加新項目
     function addNewItem() {
         const tbody = document.getElementById('items-body');
