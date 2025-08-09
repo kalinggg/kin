@@ -52,6 +52,86 @@ class QuotationAPI {
     return this.request('delete', { id });
   }
 }
+// 全局變量
+const api = new QuotationAPI();
+let database = [];
+let itemCounter = 1;
+
+// DOM 加載完成後初始化
+document.addEventListener('DOMContentLoaded', function() {
+  initApp();
+});
+
+function initApp() {
+  // 設置默認日期和報價單編號
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('date').value = today;
+  document.getElementById('quotation-number').value = generateQuotationNumber();
+
+  // 從本地存儲加載數據
+  const savedData = localStorage.getItem('quotationDatabase');
+  database = savedData ? JSON.parse(savedData) : [];
+  
+  // 渲染報價單列表
+  renderQuotationList();
+
+  // 綁定事件監聽器
+  setupEventListeners();
+}
+
+// 生成報價單編號
+function generateQuotationNumber() {
+  const now = new Date();
+  const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+  const randomNum = Math.floor(1000 + Math.random() * 9000);
+  return `Q-${dateStr}-${randomNum}`;
+}
+
+// 設置事件監聽器
+function setupEventListeners() {
+  document.getElementById('add-item').addEventListener('click', addNewItem);
+  document.getElementById('remove-item').addEventListener('click', removeSelectedItems);
+  document.getElementById('save-btn').addEventListener('click', saveToDatabase);
+  document.getElementById('delete-btn').addEventListener('click', deleteSelectedQuotation);
+  document.getElementById('export-txt').addEventListener('click', exportToTxt);
+  document.getElementById('export-excel').addEventListener('click', exportToExcel);
+  document.getElementById('print-btn').addEventListener('click', printQuotation);
+}
+
+// 渲染報價單列表
+function renderQuotationList() {
+  const listContainer = document.getElementById('quotation-list');
+  
+  if (database.length === 0) {
+    listContainer.innerHTML = '<p>尚未儲存任何報價單</p>';
+    return;
+  }
+
+  listContainer.innerHTML = database.map(quotation => `
+    <div class="quotation-item" data-id="${quotation.id}">
+      <span>${quotation.number} - ${quotation.customer}</span>
+      <span>總計: ${quotation.total}</span>
+    </div>
+  `).join('');
+
+  // 為每個項目添加點擊事件
+  document.querySelectorAll('.quotation-item').forEach(item => {
+    item.addEventListener('click', function() {
+      // 移除所有選中狀態
+      document.querySelectorAll('.quotation-item').forEach(i => {
+        i.classList.remove('selected');
+      });
+      // 添加當前選中狀態
+      this.classList.add('selected');
+      
+      const quotationId = this.dataset.id;
+      const quotation = database.find(q => q.id === quotationId);
+      if (quotation && confirm('載入此報價單？現有內容將會被替換。')) {
+        loadQuotation(quotation);
+      }
+    });
+  });
+}
 
 // 使用範例
 const api = new QuotationAPI();
@@ -518,3 +598,43 @@ document.addEventListener('DOMContentLoaded', function() {
         // 實際實現應顯示錯誤通知
     }
 });
+// 加載狀態函數
+function showLoading() {
+  document
+.getElementById('loading').style.display = 'flex';
+}
+
+function hideLoading() {
+  document
+.getElementById('loading').style.display = 'none';
+}
+
+function showSuccess(message) {
+  const errorDiv = document.getElementById('error-message');
+  errorDiv
+.style.display = 'block';
+  errorDiv
+.style.backgroundColor = '#d4edda';
+  errorDiv
+.style.color = '#155724';
+  errorDiv
+.style.borderColor = '#c3e6cb';
+  errorDiv
+.textContent = message;
+  setTimeout(() => errorDiv.style.display = 'none', 3000);
+}
+
+function showError(message) {
+  const errorDiv = document.getElementById('error-message');
+  errorDiv
+.style.display = 'block';
+  errorDiv
+.style.backgroundColor = '#f8d7da';
+  errorDiv
+.style.color = '#721c24';
+  errorDiv
+.style.borderColor = '#f5c6cb';
+  errorDiv
+.textContent = message;
+  setTimeout(() => errorDiv.style.display = 'none', 5000);
+}
